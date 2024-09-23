@@ -1,5 +1,2 @@
-pub mod service;
-mod retriever;
-mod scraper;
-
-pub use service::load_daily_forecast;
+pub mod retriever;
+pub mod scraper;

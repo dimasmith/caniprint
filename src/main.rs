@@ -1,7 +1,7 @@
 use caniprint::subscriptions::subscribers::FileStorage;
 use caniprint::subscriptions::Subscribers;
 use caniprint::telegram::bot::{send_forecast_digest, start_bot};
-use caniprint::ztoe::service::load_forecast_digest;
+use caniprint::load_forecast_digest;
 use std::error::Error;
 use std::sync::Arc;
 use teloxide::Bot;
