@@ -13,3 +13,4 @@ scraper = "0.20.0"
 # The latest 0.13.0 version often fails with stack overflow.
 # See details here: https://github.com/teloxide/teloxide/issues/1154
 teloxide = { version = "0.12.2", features = ["rustls", "macros"] }
+directories = "5"

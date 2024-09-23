@@ -11,6 +11,7 @@ use teloxide::prelude::*;
 use teloxide::types::ParseMode;
 use teloxide::utils::command::BotCommands;
 use tokio::sync::Mutex;
+use crate::subscriptions::subscribers::FileStorage;
 
 #[derive(BotCommands, Clone, PartialEq)]
 #[command(rename_rule = "lowercase", description = "Бот підтримує такі команди")]
@@ -25,7 +26,7 @@ enum Command {
     Subscribe,
 }
 
-pub async fn start_bot(bot: Bot, subscribers: Arc<Mutex<Subscribers>>) {
+pub async fn start_bot(bot: Bot, subscribers: Arc<Mutex<Subscribers<FileStorage>>>) {
     let command_handler = Update::filter_message()
         .branch(
             teloxide::filter_command::<Command, _>()
@@ -46,7 +47,7 @@ pub async fn start_bot(bot: Bot, subscribers: Arc<Mutex<Subscribers>>) {
 
 pub async fn send_forecast_digest(
     bot: Bot,
-    subscribers: Arc<Mutex<Subscribers>>,
+    subscribers: Arc<Mutex<Subscribers<FileStorage>>>,
     digest: &Digest,
 ) -> ResponseResult<()> {
     let clients = subscribers.lock().await.subscribers().await;
@@ -86,7 +87,7 @@ async fn tomorrow(bot: Bot, msg: Message) -> ResponseResult<()> {
 async fn subscribe(
     bot: Bot,
     msg: Message,
-    subscribers: Arc<Mutex<Subscribers>>,
+    subscribers: Arc<Mutex<Subscribers<FileStorage>>>,
 ) -> ResponseResult<()> {
     {
         // separate block to release the lock as soon as possible

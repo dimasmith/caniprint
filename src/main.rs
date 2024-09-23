@@ -6,11 +6,12 @@ use std::sync::Arc;
 use teloxide::Bot;
 use tokio::sync::Mutex;
 use tokio_cron_scheduler::{Job, JobScheduler, JobSchedulerError};
+use caniprint::subscriptions::subscribers::FileStorage;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     let bot = Bot::from_env();
-    let subscribers = Arc::new(Mutex::new(Subscribers::new()));
+    let subscribers = Arc::new(Mutex::new(Subscribers::from_file()));
     let scheduler = JobScheduler::new().await?;
 
     let digest_bot = bot.clone();
@@ -26,7 +27,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
 fn create_digest_job(
     bot: Bot,
-    subscribers: Arc<Mutex<Subscribers>>,
+    subscribers: Arc<Mutex<Subscribers<FileStorage>>>,
 ) -> Result<Job, JobSchedulerError> {
     Job::new_async("0 0 9 * * *", move |_uuid, _l| {
         let digest_bot = bot.clone();
