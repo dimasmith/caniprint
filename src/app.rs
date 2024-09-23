@@ -20,7 +20,11 @@ pub async fn load_daily_forecast(date: NaiveDate) -> Result<Forecast, ForecastEr
         .await
         .map_err(|e| ForecastError::ForecastNotAvailable(date, e))?;
     let blackouts = parse_forecast(&html, date).await;
-    Ok(Forecast::new(date, blackouts))
+    let applicable_blackouts: Vec<_> = blackouts
+        .into_iter()
+        .filter(|b| b.happens_in("Корнин"))
+        .collect();
+    Ok(Forecast::new(date, applicable_blackouts))
 }
 
 pub async fn load_forecast_digest(days: u32) -> Result<Digest, ForecastError> {
