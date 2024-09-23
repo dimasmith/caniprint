@@ -1,6 +1,6 @@
 use crate::blackout::{Digest, Forecast};
-use crate::ztoe::retriever::{load_schedule, LoadError};
-use crate::ztoe::scraper::scrape_blackouts;
+use crate::ztoe::client::{get_forecast, LoadError};
+use crate::ztoe::parser::parse_forecast;
 use chrono::{Local, NaiveDate, TimeDelta};
 use futures::future::join_all;
 use std::ops::Add;
@@ -16,10 +16,10 @@ pub enum ForecastError {
 }
 
 pub async fn load_daily_forecast(date: NaiveDate) -> Result<Forecast, ForecastError> {
-    let html = load_schedule(date)
+    let html = get_forecast(date)
         .await
         .map_err(|e| ForecastError::ForecastNotAvailable(date, e))?;
-    let blackouts = scrape_blackouts(&html, date).await;
+    let blackouts = parse_forecast(&html, date).await;
     Ok(Forecast::new(date, blackouts))
 }
 

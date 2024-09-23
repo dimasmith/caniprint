@@ -1,2 +1,2 @@
-pub mod retriever;
-pub mod scraper;
+pub mod client;
+pub mod parser;

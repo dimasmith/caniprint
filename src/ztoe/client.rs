@@ -8,7 +8,7 @@ pub enum LoadError {
 }
 
 const REM_ID: usize = 19;
-pub async fn load_schedule(date: NaiveDate) -> Result<String, LoadError> {
+pub async fn get_forecast(date: NaiveDate) -> Result<String, LoadError> {
     let url = format!(
         "https://ztoe.com.ua/unhooking.php?rem_id={}&date={}",
         REM_ID, date

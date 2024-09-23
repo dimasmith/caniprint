@@ -2,7 +2,7 @@ use crate::blackout::Blackout;
 use chrono::NaiveDate;
 use scraper::{Html, Selector};
 
-pub async fn scrape_blackouts(html: &str, date: NaiveDate) -> Vec<Blackout> {
+pub async fn parse_forecast(html: &str, date: NaiveDate) -> Vec<Blackout> {
     let document = Html::parse_document(html);
     let table_cell_selector = Selector::parse("div#data_result table td").unwrap();
     let cells = document.select(&table_cell_selector);
