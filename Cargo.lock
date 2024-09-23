@@ -137,6 +137,7 @@ dependencies = [
  "reqwest 0.12.7",
  "scraper",
  "teloxide",
+ "thiserror",
  "tokio",
  "tokio-cron-scheduler",
  "tracing",

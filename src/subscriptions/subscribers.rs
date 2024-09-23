@@ -2,7 +2,14 @@ use directories::ProjectDirs;
 use std::collections::HashSet;
 use std::path::PathBuf;
 use teloxide::types::ChatId;
+use thiserror::Error;
 use tracing::{debug, error, info, instrument};
+
+#[derive(Debug, Error)]
+pub enum SubscribersError {
+    #[error("IO error: {0}")]
+    IoError(std::io::Error),
+}
 
 #[derive(Debug)]
 pub struct Subscribers<Storage> {
@@ -11,13 +18,13 @@ pub struct Subscribers<Storage> {
 }
 
 impl Subscribers<FileStorage> {
-    pub fn from_file() -> Self {
+    pub fn from_file() -> Result<Self, SubscribersError> {
         let storage = FileStorage::new();
-        let subscribers = storage.read().unwrap();
-        Self {
+        let subscribers = storage.read().map_err(SubscribersError::IoError)?;
+        Ok(Self {
             storage,
             subscribers,
-        }
+        })
     }
 }
 

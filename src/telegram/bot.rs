@@ -1,8 +1,11 @@
 use crate::blackout::Digest;
+use crate::subscriptions::subscribers::FileStorage;
 use crate::subscriptions::Subscribers;
-use crate::telegram::messages::{display_digest, display_forecast};
-use crate::ztoe::retrieve_forecast;
-use crate::ztoe::service::digest_forecasts;
+use crate::telegram::messages::{
+    display_digest, display_forecast, display_unavailable_digest, display_unavailable_forecast,
+};
+use crate::ztoe::load_daily_forecast;
+use crate::ztoe::service::load_forecast_digest;
 use chrono::{Local, NaiveDate, TimeDelta};
 use std::ops::Add;
 use std::sync::Arc;
@@ -11,7 +14,7 @@ use teloxide::prelude::*;
 use teloxide::types::ParseMode;
 use teloxide::utils::command::BotCommands;
 use tokio::sync::Mutex;
-use crate::subscriptions::subscribers::FileStorage;
+use tracing::warn;
 
 #[derive(BotCommands, Clone, PartialEq)]
 #[command(rename_rule = "lowercase", description = "Бот підтримує такі команди")]
@@ -47,13 +50,12 @@ pub async fn start_bot(bot: Bot, subscribers: Arc<Mutex<Subscribers<FileStorage>
 
 pub async fn send_forecast_digest(
     bot: Bot,
-    subscribers: Arc<Mutex<Subscribers<FileStorage>>>,
+    clients: &[ChatId],
     digest: &Digest,
 ) -> ResponseResult<()> {
-    let clients = subscribers.lock().await.subscribers().await;
     let message = display_digest(digest);
     for client in clients {
-        bot.send_message(client, message.clone())
+        bot.send_message(*client, message.clone())
             .parse_mode(ParseMode::MarkdownV2)
             .await?;
     }
@@ -68,18 +70,25 @@ async fn help(bot: Bot, msg: Message) -> ResponseResult<()> {
 
 async fn today(bot: Bot, msg: Message) -> ResponseResult<()> {
     let today = Local::now().date_naive();
-    let message = forecast_for(today).await;
-    bot.parse_mode(ParseMode::MarkdownV2)
-        .send_message(msg.chat.id, message)
-        .await?;
-    Ok(())
+    forecast_for_date(bot, msg, today).await
 }
 
 async fn tomorrow(bot: Bot, msg: Message) -> ResponseResult<()> {
     let tomorrow = Local::now().date_naive().add(TimeDelta::days(1));
-    let message = forecast_for(tomorrow).await;
-    bot.send_message(msg.chat.id, message)
-        .parse_mode(ParseMode::MarkdownV2)
+    forecast_for_date(bot, msg, tomorrow).await
+}
+
+async fn forecast_for_date(bot: Bot, msg: Message, date: NaiveDate) -> ResponseResult<()> {
+    let forecast = load_daily_forecast(date).await;
+    let message = match forecast {
+        Ok(f) => display_forecast(&f),
+        Err(e) => {
+            warn!("Failed to load forecast for {}: {}", date, e);
+            display_unavailable_forecast(date)
+        },
+    };
+    bot.parse_mode(ParseMode::MarkdownV2)
+        .send_message(msg.chat.id, message)
         .await?;
     Ok(())
 }
@@ -95,15 +104,16 @@ async fn subscribe(
         subscribers.subscribe(msg.chat.id).await;
     }
 
-    let digest = digest_forecasts(3).await;
-    let message = display_digest(&digest);
+    let digest = load_forecast_digest(3).await;
+    let message = match digest {
+        Ok(d) => display_digest(&d),
+        Err(e) => {
+            warn!("Failed to load digest: {}", e);
+            display_unavailable_digest()
+        }
+    };
     bot.send_message(msg.chat.id, message)
         .parse_mode(ParseMode::MarkdownV2)
         .await?;
     Ok(())
-}
-
-async fn forecast_for(date: NaiveDate) -> String {
-    let forecast = retrieve_forecast(date).await;
-    display_forecast(&forecast)
 }
