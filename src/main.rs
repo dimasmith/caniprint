@@ -1,7 +1,9 @@
+use caniprint::load_forecast_digest;
 use caniprint::subscriptions::subscribers::FileStorage;
 use caniprint::subscriptions::Subscribers;
-use caniprint::telegram::bot::{send_forecast_digest, start_bot};
-use caniprint::load_forecast_digest;
+use caniprint::telegram::bot::start_bot;
+use caniprint::telegram::messages::{send_digest, send_digest_unavailable};
+use futures::future::join_all;
 use std::error::Error;
 use std::sync::Arc;
 use teloxide::Bot;
@@ -46,12 +48,20 @@ fn create_digest_job(
             let digest = load_forecast_digest(3).await;
             match digest {
                 Ok(d) => {
-                    if let Err(e) = send_forecast_digest(digest_bot, &clients, &d).await {
-                        warn!("Failed to send digest: {}", e);
-                    }
+                    info!("Sending morning digest to {} clients", clients.len());
+                    let notifications: Vec<_> = clients
+                        .iter()
+                        .map(|client| send_digest(digest_bot.clone(), *client, &d))
+                        .collect();
+                    join_all(notifications).await;
                 }
                 Err(e) => {
-                    warn!("Failed to load digest: {}", e);
+                    warn!("Failed to load forecast digest: {}", e);
+                    let notifications: Vec<_> = clients
+                        .iter()
+                        .map(|client| send_digest_unavailable(digest_bot.clone(), *client))
+                        .collect();
+                    join_all(notifications).await;
                 }
             }
         })

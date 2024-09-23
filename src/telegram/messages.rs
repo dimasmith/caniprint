@@ -1,29 +1,39 @@
+//! Methods to send telegram messages to bot subscribers.
+
 use chrono::NaiveDate;
 use crate::blackout::{Digest, Forecast};
+use crate::telegram::markdown::{display_digest, display_forecast, display_unavailable_digest, display_unavailable_forecast};
+use teloxide::prelude::*;
+use teloxide::types::ParseMode;
 
-pub fn display_forecast(forecast: &Forecast) -> String {
-    if forecast.is_empty() {
-        format!("✅ `{}` відключення не прогнозуються\\.", forecast.date())
-    } else {
-        format!("⚠️ `{}` можливі відключення\\. Деталі на [сайті ЖТОЕ](https://ztoe.com.ua/unhooking.php?rem_id=19&date={})", forecast.date(), forecast.date())
-    }
+/// Send a digest to a chat.
+pub async fn send_digest(bot: Bot, chat_id: ChatId, digest: &Digest) -> ResponseResult<()> {
+    let message = display_digest(digest);
+    bot.send_message(chat_id, message)
+        .parse_mode(ParseMode::MarkdownV2)
+        .await?;
+    Ok(())
 }
 
-pub fn display_unavailable_forecast(date: NaiveDate) -> String {
-    format!("❌ Прогноз відключень на `{}` недоступний\\.", date)
+/// Send a message about an unavailable digest to a chat.
+pub async fn send_digest_unavailable(bot: Bot, chat_id: ChatId) -> ResponseResult<()> {
+    bot.send_message(chat_id, display_unavailable_digest())
+        .parse_mode(ParseMode::MarkdownV2)
+        .await?;
+    Ok(())
 }
 
-pub fn display_forecasts(forecasts: &[Forecast]) -> String {
-    let messages: Vec<String> = forecasts.iter().map(display_forecast).collect();
-    messages.join("\n")
+pub async fn send_forecast(bot: Bot, chat_id: ChatId, forecast: &Forecast) -> ResponseResult<()> {
+    let message = display_forecast(forecast);
+    bot.send_message(chat_id, message)
+        .parse_mode(ParseMode::MarkdownV2)
+        .await?;
+    Ok(())
 }
 
-pub fn display_digest(digest: &Digest) -> String {
-    let message = display_forecasts(digest.forecasts());
-    let last_update = digest.last_update().format("%Y-%m-%d %H:%M:%S");
-    format!("{}\n\n_Оновлено:_ `{}`", message, last_update)
-}
-
-pub fn display_unavailable_digest() -> String {
-    "❌ Прогноз відключень недоступний\\.".to_string()
+pub async fn send_unavailable_forecast(bot: Bot, chat_id: ChatId, date: NaiveDate) -> ResponseResult<()> {
+    bot.send_message(chat_id, display_unavailable_forecast(date))
+        .parse_mode(ParseMode::MarkdownV2)
+        .await?;
+    Ok(())
 }
