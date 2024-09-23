@@ -1,9 +1,7 @@
 use caniprint::subscriptions::Subscribers;
 use caniprint::telegram::bot::{send_forecast_digest, start_bot};
-use caniprint::ztoe::retrieve_forecast;
-use chrono::{Local, TimeDelta};
+use caniprint::ztoe::service::digest_forecasts;
 use std::error::Error;
-use std::ops::Add;
 use std::sync::Arc;
 use teloxide::Bot;
 use tokio::sync::Mutex;
@@ -26,16 +24,16 @@ async fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn create_digest_job(bot: Bot, subscribers: Arc<Mutex<Subscribers>>) -> Result<Job, JobSchedulerError> {
-    Job::new_async("0 0 8 * * *", move |_uuid, _l| {
+fn create_digest_job(
+    bot: Bot,
+    subscribers: Arc<Mutex<Subscribers>>,
+) -> Result<Job, JobSchedulerError> {
+    Job::new_async("0 0 9 * * *", move |_uuid, _l| {
         let digest_bot = bot.clone();
         let digest_subscribers = Arc::clone(&subscribers);
         Box::pin(async move {
-            let today_forecast = retrieve_forecast(Local::now().date_naive()).await;
-            let tomorrow_forecast =
-                retrieve_forecast(Local::now().date_naive().add(TimeDelta::days(1))).await;
-            let forecasts = vec![today_forecast, tomorrow_forecast];
-            send_forecast_digest(digest_bot, digest_subscribers, &forecasts)
+            let digest = digest_forecasts(3).await;
+            send_forecast_digest(digest_bot, digest_subscribers, &digest)
                 .await
                 .unwrap();
         })

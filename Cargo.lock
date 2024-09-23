@@ -132,6 +132,7 @@ name = "caniprint"
 version = "0.1.1-alpha.1"
 dependencies = [
  "chrono",
+ "futures",
  "reqwest 0.12.7",
  "scraper",
  "teloxide",
