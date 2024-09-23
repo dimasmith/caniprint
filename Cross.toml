@@ -1,2 +1,3 @@
 [target.aarch64-unknown-linux-gnu]
-image = "cross-raspbian:aarch64"
+#image = "cross-raspbian:aarch64"
+dockerfile = "build/Dockerfile.cross-raspbian-aarch64"
