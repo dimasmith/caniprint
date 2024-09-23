@@ -1,10 +1,10 @@
-use crate::blackout::Blackout;
+use crate::blackout::Forecast;
 use crate::ztoe::retriever::load_schedule;
 use crate::ztoe::scraper::scrape_blackouts;
 use chrono::NaiveDate;
 
-pub async fn check_blackouts(date: NaiveDate) -> Vec<Blackout> {
+pub async fn retrieve_forecast(date: NaiveDate) -> Forecast {
     let html = load_schedule(date).await;
-    scrape_blackouts(&html, date).await
-
+    let blackouts = scrape_blackouts(&html, date).await;
+    Forecast::new(date, blackouts)
 }
