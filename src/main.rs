@@ -6,10 +6,17 @@ use std::sync::Arc;
 use teloxide::Bot;
 use tokio::sync::Mutex;
 use tokio_cron_scheduler::{Job, JobScheduler, JobSchedulerError};
+use tracing::info;
+use tracing_subscriber::FmtSubscriber;
 use caniprint::subscriptions::subscribers::FileStorage;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
+    let subscriber = FmtSubscriber::builder()
+        .with_max_level(tracing::Level::INFO)
+        .finish();
+    tracing::subscriber::set_global_default(subscriber).unwrap();
+
     let bot = Bot::from_env();
     let subscribers = Arc::new(Mutex::new(Subscribers::from_file()));
     let scheduler = JobScheduler::new().await?;
@@ -17,9 +24,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let digest_bot = bot.clone();
     let digest_subscribers = Arc::clone(&subscribers);
     let digest_job = create_digest_job(digest_bot, digest_subscribers)?;
-
     scheduler.add(digest_job).await?;
+    info!("Digest job initialized");
     scheduler.start().await?;
+
     start_bot(bot, subscribers).await;
 
     Ok(())

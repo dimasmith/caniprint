@@ -2,7 +2,9 @@ use directories::ProjectDirs;
 use std::collections::HashSet;
 use std::path::PathBuf;
 use teloxide::types::ChatId;
+use tracing::{debug, error, info, instrument};
 
+#[derive(Debug)]
 pub struct Subscribers<Storage> {
     storage: Storage,
     subscribers: HashSet<ChatId>,
@@ -20,14 +22,21 @@ impl Subscribers<FileStorage> {
 }
 
 impl Subscribers<FileStorage> {
+
+    #[instrument]
     pub async fn subscribe(&mut self, chat_id: ChatId) {
         self.subscribers.insert(chat_id);
-        self.storage.write(&self.subscribers).unwrap();
+        if let Err(e) = self.storage.write(&self.subscribers) {
+            error!("failed to save subscribers: {}", e);
+        }
     }
 
+    #[instrument]
     pub async fn unsubscribe(&mut self, chat_id: ChatId) {
         self.subscribers.remove(&chat_id);
-        self.storage.write(&self.subscribers).unwrap();
+        if let Err(e) = self.storage.write(&self.subscribers) {
+            error!("failed to save subscribers: {}", e);
+        }
     }
 
     pub async fn subscribers(&self) -> Vec<ChatId> {
@@ -55,6 +64,7 @@ impl Subscribers<MemoryStorage> {
     }
 }
 
+#[derive(Debug)]
 pub struct FileStorage {
     path: PathBuf,
 }
@@ -69,6 +79,7 @@ impl FileStorage {
         let file_path = data_dir.join("subscribers.dat");
         if !file_path.exists() {
             std::fs::write(&file_path, "").unwrap();
+            debug!("Created a new subscribers file at {:?}", file_path);
         }
         Self { path: file_path }
     }
@@ -81,6 +92,7 @@ impl FileStorage {
                 subscribers.insert(ChatId(chat_id));
             }
         }
+        info!("subscribers loaded from {}", self.path.display());
         Ok(subscribers)
     }
 
@@ -90,10 +102,13 @@ impl FileStorage {
             .map(|chat_id| chat_id.to_string())
             .collect::<Vec<String>>()
             .join("\n");
-        std::fs::write(&self.path, content)
+        let result = std::fs::write(&self.path, content);
+        info!("subscribers saved to {}", self.path.display());
+        result
     }
 }
 
+#[derive(Debug)]
 pub struct MemoryStorage {
 
 }
