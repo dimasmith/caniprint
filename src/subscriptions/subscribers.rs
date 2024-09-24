@@ -1,5 +1,6 @@
 use directories::ProjectDirs;
 use std::collections::HashSet;
+use std::fmt::Display;
 use std::path::PathBuf;
 use thiserror::Error;
 use tracing::{debug, error, info, instrument};
@@ -88,7 +89,7 @@ impl FileStorage {
     fn write(&self, subscribers: &HashSet<SubscriberId>) -> Result<(), std::io::Error> {
         let content = subscribers
             .iter()
-            .map(|subscriber_id| subscriber_id.to_string())
+            .map(|subscriber_id| subscriber_id.as_string())
             .collect::<Vec<String>>()
             .join("\n");
         let result = std::fs::write(&self.path, content);
@@ -97,8 +98,14 @@ impl FileStorage {
     }
 }
 
+impl Display for SubscriberId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 impl SubscriberId {
-    pub fn to_string(&self) -> String {
+    pub fn as_string(&self) -> String {
         self.0.to_string()
     }
 }

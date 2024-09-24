@@ -1,13 +1,12 @@
+use caniprint::init::subscriptions_service;
 use caniprint::scheduler::init::start_scheduler;
 use caniprint::subscriptions::Subscribers;
 use caniprint::telegram::bot::start_bot;
-use caniprint::SubscriptionService;
+use caniprint::telegram::digest::BotDigestNotifier;
 use std::error::Error;
 use std::sync::Arc;
 use teloxide::Bot;
-use tokio::sync::Mutex;
 use tracing_subscriber::FmtSubscriber;
-use caniprint::telegram::digest::BotDigestNotifier;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -19,19 +18,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let bot = Bot::from_env();
     let service_bot = bot.clone();
 
-    let bot_notifier = BotDigestNotifier::new(service_bot);
+    let bot_notifier = Box::new(BotDigestNotifier::new(service_bot));
+    let subscribers_repo = Subscribers::from_file()?;
+    let subscription_service = subscriptions_service(subscribers_repo, bot_notifier);
 
-    let subscribers = Subscribers::from_file()?;
-    let subscription_service = SubscriptionService::new(subscribers, Box::new(bot_notifier));
-    let shared_subscription_service = Arc::new(Mutex::new(subscription_service));
-
-    let scheduled_subscription_service = Arc::clone(&shared_subscription_service);
-    start_scheduler(scheduled_subscription_service).await?;
-
-    let bot_subscription_service = Arc::clone(&shared_subscription_service);
-    start_bot(bot, bot_subscription_service).await;
+    start_scheduler(Arc::clone(&subscription_service)).await?;
+    start_bot(bot, Arc::clone(&subscription_service)).await;
 
     Ok(())
 }
-
-
