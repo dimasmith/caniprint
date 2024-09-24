@@ -2,7 +2,7 @@
 
 use crate::telegram::bot::Command;
 use crate::telegram::messages::*;
-use crate::{load_daily_forecast, load_forecast_digest, SubscriptionService};
+use crate::{load_daily_forecast, load_forecast_digest, SubscriberId, SubscriptionService};
 use chrono::{Local, NaiveDate, TimeDelta};
 use std::ops::Add;
 use std::sync::Arc;
@@ -20,15 +20,15 @@ pub async fn subscribe(
     {
         // separate block to release the lock as soon as possible
         let mut subscribers = subscription_service.lock().await;
-        subscribers.subscribe(msg.chat.id).await;
+        subscribers.subscribe(SubscriberId::from(msg.chat.id)).await;
     }
 
     let digest = load_forecast_digest(3).await;
     match digest {
-        Ok(d) => send_digest(&bot, msg.chat.id, &d).await,
+        Ok(d) => send_digest(&bot, SubscriberId::from(msg.chat.id), &d).await,
         Err(e) => {
             warn!("Failed to load forecast digest: {}", e);
-            send_digest_unavailable(&bot, msg.chat.id).await
+            send_digest_unavailable(&bot, SubscriberId::from(msg.chat.id)).await
         }
     }?;
     Ok(())

@@ -1,9 +1,9 @@
 use directories::ProjectDirs;
 use std::collections::HashSet;
 use std::path::PathBuf;
-use teloxide::types::ChatId;
 use thiserror::Error;
 use tracing::{debug, error, info, instrument};
+use crate::SubscriberId;
 
 #[derive(Debug, Error)]
 pub enum SubscribersError {
@@ -16,7 +16,7 @@ pub type SubscribersRepository = Subscribers<FileStorage>;
 #[derive(Debug)]
 pub struct Subscribers<Storage> {
     storage: Storage,
-    subscribers: HashSet<ChatId>,
+    subscribers: HashSet<SubscriberId>,
 }
 
 impl Subscribers<FileStorage> {
@@ -33,7 +33,7 @@ impl Subscribers<FileStorage> {
 impl Subscribers<FileStorage> {
 
     #[instrument]
-    pub async fn subscribe(&mut self, chat_id: ChatId) {
+    pub async fn subscribe(&mut self, chat_id: SubscriberId) {
         self.subscribers.insert(chat_id);
         if let Err(e) = self.storage.write(&self.subscribers) {
             error!("failed to save subscribers: {}", e);
@@ -41,34 +41,14 @@ impl Subscribers<FileStorage> {
     }
 
     #[instrument]
-    pub async fn unsubscribe(&mut self, chat_id: ChatId) {
+    pub async fn unsubscribe(&mut self, chat_id: SubscriberId) {
         self.subscribers.remove(&chat_id);
         if let Err(e) = self.storage.write(&self.subscribers) {
             error!("failed to save subscribers: {}", e);
         }
     }
 
-    pub async fn subscribers(&self) -> Vec<ChatId> {
-        self.subscribers.iter().cloned().collect()
-    }
-}
-
-impl Subscribers<MemoryStorage> {
-    pub fn from_memory() -> Self {
-        Self {
-            storage: MemoryStorage {},
-            subscribers: HashSet::new(),
-        }
-    }
-
-    pub async fn subscribe(&mut self, chat_id: ChatId) {
-        self.subscribers.insert(chat_id);
-    }
-
-    pub async fn unsubscribe(&mut self, chat_id: ChatId) {
-        self.subscribers.remove(&chat_id);    }
-
-    pub async fn subscribers(&self) -> Vec<ChatId> {
+    pub async fn subscribers(&self) -> Vec<SubscriberId> {
         self.subscribers.iter().cloned().collect()
     }
 }
@@ -93,22 +73,22 @@ impl FileStorage {
         Self { path: file_path }
     }
 
-    fn read(&self) -> Result<HashSet<ChatId>, std::io::Error> {
+    fn read(&self) -> Result<HashSet<SubscriberId>, std::io::Error> {
         let content = std::fs::read_to_string(&self.path)?;
         let mut subscribers = HashSet::new();
         for line in content.lines() {
             if let Ok(chat_id) = line.parse::<i64>() {
-                subscribers.insert(ChatId(chat_id));
+                subscribers.insert(SubscriberId(chat_id));
             }
         }
         info!("subscribers loaded from {}", self.path.display());
         Ok(subscribers)
     }
 
-    fn write(&self, subscribers: &HashSet<ChatId>) -> Result<(), std::io::Error> {
+    fn write(&self, subscribers: &HashSet<SubscriberId>) -> Result<(), std::io::Error> {
         let content = subscribers
             .iter()
-            .map(|chat_id| chat_id.to_string())
+            .map(|subscriber_id| subscriber_id.to_string())
             .collect::<Vec<String>>()
             .join("\n");
         let result = std::fs::write(&self.path, content);
@@ -117,7 +97,8 @@ impl FileStorage {
     }
 }
 
-#[derive(Debug)]
-pub struct MemoryStorage {
-
+impl SubscriberId {
+    pub fn to_string(&self) -> String {
+        self.0.to_string()
+    }
 }

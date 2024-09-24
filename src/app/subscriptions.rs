@@ -2,9 +2,11 @@ use crate::load_forecast_digest;
 use crate::subscriptions::subscribers::SubscribersRepository;
 use crate::telegram::messages::{send_digest, send_digest_unavailable};
 use futures::future::join_all;
-use teloxide::types::ChatId;
 use teloxide::Bot;
 use thiserror::Error;
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct SubscriberId(pub i64);
 
 #[derive(Debug, Error)]
 pub enum SubscriptionError {
@@ -25,7 +27,7 @@ impl SubscriptionService {
 }
 
 impl SubscriptionService {
-    pub async fn subscribe(&mut self, chat_id: ChatId) {
+    pub async fn subscribe(&mut self, chat_id: SubscriberId) {
         self.subscribers.subscribe(chat_id).await;
     }
 
@@ -50,5 +52,11 @@ impl SubscriptionService {
             }
         }
         Ok(())
+    }
+}
+
+impl From<i64> for SubscriberId {
+    fn from(id: i64) -> Self {
+        Self(id)
     }
 }
