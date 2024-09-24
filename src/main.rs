@@ -6,6 +6,7 @@ use caniprint::telegram::messages::{send_digest, send_digest_unavailable};
 use futures::future::join_all;
 use std::error::Error;
 use std::sync::Arc;
+use chrono::Local;
 use teloxide::Bot;
 use tokio::sync::Mutex;
 use tokio_cron_scheduler::{Job, JobScheduler, JobSchedulerError};
@@ -40,7 +41,7 @@ fn create_digest_job(
     bot: Bot,
     subscribers: Arc<Mutex<Subscribers<FileStorage>>>,
 ) -> Result<Job, JobSchedulerError> {
-    Job::new_async("0 0 9 * * *", move |_uuid, _l| {
+    Job::new_async_tz("0 0 9 * * *", Local, move |_uuid, _l| {
         let digest_bot = bot.clone();
         let digest_subscribers = Arc::clone(&subscribers);
         Box::pin(async move {
