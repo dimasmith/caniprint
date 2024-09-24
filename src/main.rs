@@ -1,12 +1,9 @@
-use caniprint::load_forecast_digest;
-use caniprint::subscriptions::subscribers::FileStorage;
 use caniprint::subscriptions::Subscribers;
 use caniprint::telegram::bot::start_bot;
-use caniprint::telegram::messages::{send_digest, send_digest_unavailable};
-use futures::future::join_all;
+use caniprint::SubscriptionService;
+use chrono::Local;
 use std::error::Error;
 use std::sync::Arc;
-use chrono::Local;
 use teloxide::Bot;
 use tokio::sync::Mutex;
 use tokio_cron_scheduler::{Job, JobScheduler, JobSchedulerError};
@@ -22,49 +19,37 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let bot = Bot::from_env();
     let subscribers = Subscribers::from_file()?;
-    let subscribers = Arc::new(Mutex::new(subscribers));
+
+    let service_bot = bot.clone();
+    let subscription_service = SubscriptionService::new(subscribers, service_bot);
+    let shared_subscription_service = Arc::new(Mutex::new(subscription_service));
+
     let scheduler = JobScheduler::new().await?;
 
-    let digest_bot = bot.clone();
-    let digest_subscribers = Arc::clone(&subscribers);
-    let digest_job = create_digest_job(digest_bot, digest_subscribers)?;
+    let scheduled_subscription_service = Arc::clone(&shared_subscription_service);
+    let digest_job = create_digest_job(scheduled_subscription_service)?;
     scheduler.add(digest_job).await?;
     info!("Digest job initialized");
     scheduler.start().await?;
 
-    start_bot(bot, subscribers).await;
+    let bot_subscription_service = Arc::clone(&shared_subscription_service);
+    start_bot(bot, bot_subscription_service).await;
 
     Ok(())
 }
 
 fn create_digest_job(
-    bot: Bot,
-    subscribers: Arc<Mutex<Subscribers<FileStorage>>>,
+    subscription_service: Arc<Mutex<SubscriptionService>>,
 ) -> Result<Job, JobSchedulerError> {
     Job::new_async_tz("0 0 9 * * *", Local, move |_uuid, _l| {
-        let digest_bot = bot.clone();
-        let digest_subscribers = Arc::clone(&subscribers);
+        let service = Arc::clone(&subscription_service);
         Box::pin(async move {
-            let clients = digest_subscribers.lock().await.subscribers().await;
-            let digest = load_forecast_digest(3).await;
-            match digest {
-                Ok(d) => {
-                    info!("Sending morning digest to {} clients", clients.len());
-                    let notifications: Vec<_> = clients
-                        .iter()
-                        .map(|client| send_digest(digest_bot.clone(), *client, &d))
-                        .collect();
-                    join_all(notifications).await;
-                }
-                Err(e) => {
-                    warn!("Failed to load forecast digest: {}", e);
-                    let notifications: Vec<_> = clients
-                        .iter()
-                        .map(|client| send_digest_unavailable(digest_bot.clone(), *client))
-                        .collect();
-                    join_all(notifications).await;
-                }
-            }
+            let service = service.lock().await;
+            service
+                .send_digests_to_subscribers()
+                .await
+                .map_err(|e| warn!("Failed to send digests: {}", e))
+                .ok();
         })
     })
 }

@@ -11,6 +11,8 @@ pub enum SubscribersError {
     IoError(std::io::Error),
 }
 
+pub type SubscribersRepository = Subscribers<FileStorage>;
+
 #[derive(Debug)]
 pub struct Subscribers<Storage> {
     storage: Storage,

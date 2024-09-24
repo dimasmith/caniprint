@@ -1,10 +1,8 @@
 //! Telegram bot command handlers.
 
-use crate::subscriptions::subscribers::FileStorage;
-use crate::subscriptions::Subscribers;
 use crate::telegram::bot::Command;
 use crate::telegram::messages::*;
-use crate::{load_daily_forecast, load_forecast_digest};
+use crate::{load_daily_forecast, load_forecast_digest, SubscriptionService};
 use chrono::{Local, NaiveDate, TimeDelta};
 use std::ops::Add;
 use std::sync::Arc;
@@ -17,20 +15,20 @@ use tracing::warn;
 pub async fn subscribe(
     bot: Bot,
     msg: Message,
-    subscribers: Arc<Mutex<Subscribers<FileStorage>>>,
+    subscription_service: Arc<Mutex<SubscriptionService>>,
 ) -> ResponseResult<()> {
     {
         // separate block to release the lock as soon as possible
-        let mut subscribers = subscribers.lock().await;
+        let mut subscribers = subscription_service.lock().await;
         subscribers.subscribe(msg.chat.id).await;
     }
 
     let digest = load_forecast_digest(3).await;
     match digest {
-        Ok(d) => send_digest(bot, msg.chat.id, &d).await,
+        Ok(d) => send_digest(&bot, msg.chat.id, &d).await,
         Err(e) => {
             warn!("Failed to load forecast digest: {}", e);
-            send_digest_unavailable(bot, msg.chat.id).await
+            send_digest_unavailable(&bot, msg.chat.id).await
         }
     }?;
     Ok(())
@@ -49,10 +47,10 @@ pub async fn tomorrow(bot: Bot, msg: Message) -> ResponseResult<()> {
 async fn forecast_for_date(bot: Bot, msg: Message, date: NaiveDate) -> ResponseResult<()> {
     let forecast = load_daily_forecast(date).await;
     match forecast {
-        Ok(f) => send_forecast(bot, msg.chat.id, &f).await,
+        Ok(f) => send_forecast(&bot, msg.chat.id, &f).await,
         Err(e) => {
             warn!("Failed to load forecast for {}: {}", date, e);
-            send_unavailable_forecast(bot, msg.chat.id, date).await
+            send_unavailable_forecast(&bot, msg.chat.id, date).await
         }
     }
 }

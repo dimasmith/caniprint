@@ -1,11 +1,11 @@
-use crate::subscriptions::subscribers::FileStorage;
-use crate::subscriptions::Subscribers;
 use crate::telegram::handlers;
 use std::sync::Arc;
 use teloxide::dptree::case;
 use teloxide::prelude::*;
 use teloxide::utils::command::BotCommands;
 use tokio::sync::Mutex;
+use crate::SubscriptionService;
+
 #[derive(BotCommands, Clone, PartialEq)]
 #[command(rename_rule = "lowercase", description = "Бот підтримує такі команди")]
 pub(super) enum Command {
@@ -19,7 +19,7 @@ pub(super) enum Command {
     Subscribe,
 }
 
-pub async fn start_bot(bot: Bot, subscribers: Arc<Mutex<Subscribers<FileStorage>>>) {
+pub async fn start_bot(bot: Bot, subscription_service: Arc<Mutex<SubscriptionService>>) {
     let command_handler = Update::filter_message()
         .branch(
             teloxide::filter_command::<Command, _>()
@@ -31,7 +31,7 @@ pub async fn start_bot(bot: Bot, subscribers: Arc<Mutex<Subscribers<FileStorage>
         .endpoint(handlers::help);
 
     Dispatcher::builder(bot, command_handler)
-        .dependencies(dptree::deps![subscribers])
+        .dependencies(dptree::deps![subscription_service])
         .enable_ctrlc_handler()
         .build()
         .dispatch()
