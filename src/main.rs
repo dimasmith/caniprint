@@ -7,6 +7,7 @@ use std::sync::Arc;
 use teloxide::Bot;
 use tokio::sync::Mutex;
 use tracing_subscriber::FmtSubscriber;
+use caniprint::telegram::digest::BotDigestNotifier;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -18,8 +19,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let bot = Bot::from_env();
     let service_bot = bot.clone();
 
+    let bot_notifier = BotDigestNotifier::new(service_bot);
+
     let subscribers = Subscribers::from_file()?;
-    let subscription_service = SubscriptionService::new(subscribers, service_bot);
+    let subscription_service = SubscriptionService::new(subscribers, Box::new(bot_notifier));
     let shared_subscription_service = Arc::new(Mutex::new(subscription_service));
 
     let scheduled_subscription_service = Arc::clone(&shared_subscription_service);
