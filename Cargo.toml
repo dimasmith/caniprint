@@ -10,7 +10,7 @@ futures = "0.3.30"
 async-trait = "0.1.82"
 chrono = "0.4"
 reqwest = { version = "0.12.7", features = ["charset", "rustls-tls"] }
-scraper = "0.20.0"
+scraper = "0.23.0"
 # The latest 0.13.0 version often fails with stack overflow.
 # See details here: https://github.com/teloxide/teloxide/issues/1154
 teloxide = { version = "0.15.0", features = ["rustls", "macros"] }
