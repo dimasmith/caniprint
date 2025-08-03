@@ -10,8 +10,7 @@ pub enum LoadError {
 const REM_ID: usize = 19;
 pub async fn get_forecast(date: NaiveDate) -> Result<String, LoadError> {
     let url = format!(
-        "https://ztoe.com.ua/unhooking.php?rem_id={}&date={}",
-        REM_ID, date
+        "https://ztoe.com.ua/unhooking.php?rem_id={REM_ID}&date={date}"
     );
     let response = reqwest::get(url)
         .await
