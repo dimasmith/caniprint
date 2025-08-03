@@ -10,7 +10,7 @@ pub fn display_forecast(forecast: &Forecast) -> String {
 }
 
 pub fn display_unavailable_forecast(date: NaiveDate) -> String {
-    format!("❌ Прогноз відключень на `{}` недоступний\\.", date)
+    format!("❌ Прогноз відключень на `{date}` недоступний\\.")
 }
 
 pub fn display_forecasts(forecasts: &[Forecast]) -> String {
@@ -21,7 +21,7 @@ pub fn display_forecasts(forecasts: &[Forecast]) -> String {
 pub fn display_digest(digest: &Digest) -> String {
     let message = display_forecasts(digest.forecasts());
     let last_update = digest.last_update().format("%Y-%m-%d %H:%M:%S");
-    format!("{}\n\n_Оновлено:_ `{}`", message, last_update)
+    format!("{message}\n\n_Оновлено:_ `{last_update}`")
 }
 
 pub fn display_unavailable_digest() -> String {
